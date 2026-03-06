@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Gradient Descent — Oncology AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#080c10;--ink2:#0f1419;--ink3:#161d26;--ink4:#1c2530;
+  --teal:#00d4a8;--teal2:#00ffcc;--teal-dim:rgba(0,212,168,0.12);
+  --amber:#f5a442;--amber-dim:rgba(245,164,66,0.12);
+  --gold:#ffc947;--red:#f04060;--blue:#4a9eff;
+  --white:#eef4fb;--muted:#6b7f96;--muted2:#8fa3b8;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --card:rgba(255,255,255,0.03);--card2:rgba(255,255,255,0.055);
+  --shadow:0 24px 64px rgba(0,0,0,0.5);
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--white);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── LANDING ── */
+#landing{align-items:center;justify-content:center;position:relative;overflow:hidden;background:var(--ink)}
+.land-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,168,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,168,0.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
+.land-glow{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,168,0.07) 0%,transparent 65%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.land-inner{position:relative;z-index:1;text-align:center;padding:48px 24px;max-width:860px}
+.land-eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--teal);margin-bottom:24px;font-weight:500}
+.land-logo{font-family:'Cormorant Garamond',serif;font-size:clamp(52px,7vw,88px);font-weight:600;line-height:0.95;letter-spacing:-2px;margin-bottom:20px}
+.land-logo em{color:var(--teal);font-style:italic}
+.land-sub{color:var(--muted2);font-size:16px;font-weight:300;max-width:520px;margin:0 auto 56px;line-height:1.65}
+.role-cards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+.rc{width:320px;background:var(--card);border:1px solid var(--border);border-radius:24px;padding:36px 32px;cursor:pointer;transition:all 0.35s cubic-bezier(0.23,1,0.32,1);position:relative;overflow:hidden;text-align:left}
+.rc::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.35s;pointer-events:none}
+.rc.doc::before{background:radial-gradient(circle at 20% 20%,rgba(0,212,168,0.1),transparent 60%)}
+.rc.pat::before{background:radial-gradient(circle at 20% 20%,rgba(245,164,66,0.1),transparent 60%)}
+.rc:hover{transform:translateY(-8px)}
+.rc.doc:hover{border-color:rgba(0,212,168,0.35);box-shadow:0 32px 80px rgba(0,212,168,0.1)}
+.rc.pat:hover{border-color:rgba(245,164,66,0.35);box-shadow:0 32px 80px rgba(245,164,66,0.1)}
+.rc:hover::before{opacity:1}
+.rc-badge{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:24px}
+.doc .rc-badge{background:var(--teal-dim);color:var(--teal)}
+.pat .rc-badge{background:var(--amber-dim);color:var(--amber)}
+.rc-icon{font-size:36px;margin-bottom:16px}
+.rc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;margin-bottom:10px}
+.rc-desc{color:var(--muted2);font-size:13px;line-height:1.65;margin-bottom:28px}
+.rc-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:12px;border:none;font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.3px}
+.doc .rc-btn{background:var(--teal);color:var(--ink)}
+.pat .rc-btn{background:var(--amber);color:var(--ink)}
+.rc-btn:hover{filter:brightness(1.1);transform:scale(1.03)}
+.land-tags{margin-top:52px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
+.land-tag{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;letter-spacing:0.3px}
+.land-tag::before{content:'✦';color:var(--teal);font-size:8px}
+
+/* ── TOPBAR ── */
+.topbar{height:60px;background:rgba(8,12,16,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;justify-content:space-between;position:sticky;top:0;z-index:200}
+.tb-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.tb-logo em{color:var(--teal);font-style:italic}
+.tb-left{display:flex;align-items:center;gap:14px}
+.role-pill{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px}
+.pill-doc{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(0,212,168,0.2)}
+.pill-pat{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,164,66,0.2)}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:7px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-family:'DM Sans';transition:all 0.2s;font-weight:500}
+.tb-btn:hover{color:var(--white);border-color:rgba(255,255,255,0.25)}
+.sent-pill{font-size:11px;font-weight:600;background:rgba(0,212,168,0.1);border:1px solid rgba(0,212,168,0.3);color:var(--teal);padding:5px 14px;border-radius:20px;display:none}
+.lang-toggle{display:flex;background:var(--ink3);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.lang-btn{padding:6px 14px;font-size:12px;font-weight:500;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans';transition:all 0.2s}
+.lang-btn.active{background:var(--teal);color:var(--ink);font-weight:600}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;padding:14px 24px 0;background:var(--ink2);border-bottom:1px solid var(--border)}
+.tab{padding:10px 20px;border-radius:10px 10px 0 0;font-size:13px;font-weight:500;color:var(--muted);border:1px solid transparent;border-bottom:none;cursor:pointer;background:transparent;font-family:'DM Sans';transition:all 0.2s;letter-spacing:0.2px}
+.tab.active{background:var(--ink);color:var(--white);border-color:var(--border);margin-bottom:-1px}
+.tab:not(.active):hover{color:var(--muted2)}
+
+/* ── CONTENT ── */
+.content{flex:1;padding:28px 24px;max-width:1000px;margin:0 auto;width:100%}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:18px}
+.sec-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.divider{height:1px;background:var(--border);margin:20px 0}
+.row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg.full{grid-column:1/-1}
+.fg.half{grid-column:span 2}
+.fl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.fi,.fs{background:rgba(255,255,255,0.04);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--white);font-family:'DM Sans';font-size:14px;outline:none;transition:border-color 0.2s;width:100%}
+.fi:focus,.fs:focus{border-color:rgba(0,212,168,0.5);background:rgba(0,212,168,0.04)}
+.fi::placeholder{color:var(--muted)}
+.fs option{background:var(--ink2);color:var(--white)}
+textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
+.btn-primary{background:var(--teal);border:none;border-radius:12px;padding:12px 28px;color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;letter-spacing:0.3px}
+.btn-primary:hover{background:var(--teal2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,212,168,0.25)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);border-radius:10px;padding:9px 18px;color:var(--muted2);font-size:13px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;font-weight:500}
+.btn-ghost:hover{color:var(--white);border-color:rgba(255,255,255,0.25)}
+.btn-gold{background:var(--gold);border:none;border-radius:12px;padding:11px 24px;color:var(--ink);font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s}
+.btn-gold:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-amber{background:var(--amber);border:none;border-radius:12px;padding:12px 28px;color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s}
+.btn-amber:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-danger{background:rgba(240,64,96,0.12);border:1px solid rgba(240,64,96,0.3);border-radius:10px;padding:9px 18px;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;font-weight:500}
+.btn-danger:hover{background:rgba(240,64,96,0.2)}
+.add-row{background:transparent;border:1px dashed var(--border2);border-radius:10px;padding:9px 18px;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;margin-top:8px;width:100%;text-align:center}
+.add-row:hover{border-color:rgba(0,212,168,0.4);color:var(--teal)}
+
+/* ── DOCTOR NAME BAR ── */
+.doc-name-bar{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.doc-name-bar label{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.doc-name-bar input{background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--white);font-family:'DM Sans';font-size:14px;outline:none;transition:border-color 0.2s;max-width:280px;flex:1}
+.doc-name-bar input:focus{border-color:rgba(0,212,168,0.4)}
+.doc-name-bar input::placeholder{color:var(--muted)}
+
+/* ── PATIENT LIST ── */
+.patient-list-wrap{display:flex;flex-direction:column;gap:10px}
+.pr{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:all 0.2s;flex-wrap:wrap}
+.pr:hover{border-color:var(--border2);background:rgba(255,255,255,0.04)}
+.pr.active{border-color:rgba(0,212,168,0.4);background:rgba(0,212,168,0.04)}
+.pr-name{font-weight:600;font-size:15px;font-family:'Cormorant Garamond',serif;letter-spacing:0.2px}
+.pr-meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+.pr-tag{font-size:10px;padding:4px 12px;border-radius:20px;font-weight:600;letter-spacing:0.5px}
+.tag-new{background:var(--teal-dim);color:var(--teal)}
+.tag-active{background:rgba(255,201,71,0.12);color:var(--gold)}
+.tag-sent{background:var(--amber-dim);color:var(--amber)}
+.pr-load{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--muted2);font-size:12px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;white-space:nowrap;font-weight:500}
+.pr-load:hover{color:var(--teal);border-color:rgba(0,212,168,0.35)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state .ei{font-size:40px;margin-bottom:12px;opacity:0.4}
+
+/* ── PATIENT BANNER ── */
+.pat-banner{background:rgba(0,212,168,0.05);border:1px solid rgba(0,212,168,0.2);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.pb-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.pb-meta{font-size:12px;color:var(--muted2);margin-top:3px}
+.pb-tag{background:var(--teal-dim);color:var(--teal);font-size:10px;font-weight:600;letter-spacing:1px;padding:4px 12px;border-radius:20px;text-transform:uppercase}
+
+/* ── CHAT ── */
+.chat-wrap{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--ink2)}
+.chat-msgs{height:420px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.chat-msgs::-webkit-scrollbar{width:4px}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{max-width:88%}
+.msg.user{align-self:flex-end}
+.msg.ai{align-self:flex-start}
+.msg-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px}
+.msg.user .msg-label{text-align:right}
+.bubble{padding:14px 18px;border-radius:16px;font-size:14px;line-height:1.7}
+.msg.user .bubble{background:rgba(0,212,168,0.12);border:1px solid rgba(0,212,168,0.2);border-radius:16px 16px 4px 16px}
+.msg.ai .bubble{background:var(--card2);border:1px solid var(--border);border-radius:16px 16px 16px 4px}
+.src-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.src-pill{background:rgba(0,212,168,0.08);border:1px solid rgba(0,212,168,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--teal)}
+.sugs{padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);background:var(--ink3)}
+.sug{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--muted2);font-size:12px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;font-weight:500}
+.sug:hover{color:var(--white);border-color:var(--border2)}
+.chat-input-row{display:flex;gap:10px;padding:14px 16px;border-top:1px solid var(--border);background:var(--ink3)}
+.chat-inp{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;color:var(--white);font-family:'DM Sans';font-size:14px;outline:none;transition:border-color 0.2s}
+.chat-inp:focus{border-color:rgba(0,212,168,0.45)}
+.chat-inp::placeholder{color:var(--muted)}
+.chat-send{background:var(--teal);border:none;border-radius:10px;padding:10px 22px;color:var(--ink);font-weight:700;cursor:pointer;font-family:'DM Sans';font-size:13px;transition:all 0.2s;white-space:nowrap}
+.chat-send:hover{background:var(--teal2)}
+.chat-send:disabled{opacity:0.4;cursor:not-allowed}
+.disclaimer{background:rgba(0,212,168,0.05);border:1px solid rgba(0,212,168,0.15);border-radius:10px;padding:10px 16px;font-size:12px;color:rgba(0,212,168,0.7);margin-bottom:16px;line-height:1.55}
+
+/* ── MARKDOWN ── */
+.md-bubble{white-space:normal !important}
+.md-h3{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--teal);margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid rgba(0,212,168,0.18)}
+.md-h3:first-child{margin-top:0}
+.md-option{font-weight:700;color:var(--gold);margin:12px 0 4px;font-size:13px;letter-spacing:0.3px;display:flex;align-items:center;gap:6px}
+.md-option::before{content:'▸';color:var(--amber)}
+.md-bullet{padding:3px 0 3px 20px;position:relative;color:#c0d4e8;font-size:13.5px;line-height:1.65}
+.md-bullet::before{content:'›';position:absolute;left:5px;color:var(--teal);font-weight:700;font-size:16px;line-height:1.3}
+.md-gap{height:8px}
+.msg.ai .bubble strong{color:var(--white)}
+
+/* ── APPROVAL SECTION ── */
+.approval-bar{background:rgba(255,201,71,0.06);border:1px solid rgba(255,201,71,0.2);border-radius:14px;padding:18px 20px;margin-top:16px}
+.approval-bar h4{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);margin-bottom:6px}
+.approval-bar p{font-size:13px;color:var(--muted2);margin-bottom:14px}
+.approval-btns{display:flex;gap:10px;flex-wrap:wrap}
+.edit-plan-section{margin-top:16px}
+.edit-plan-section h4{font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.edit-plan-ta{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border2);border-radius:12px;padding:16px;color:var(--white);font-family:'DM Sans';font-size:13px;line-height:1.7;min-height:220px;outline:none;resize:vertical;transition:border-color 0.2s}
+.edit-plan-ta:focus{border-color:rgba(0,212,168,0.4)}
+.simplify-bar{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:10px}
+.simplify-note{font-size:12px;color:var(--muted)}
+
+/* ── PATIENT PLAN PREVIEW (doctor side) ── */
+.plan-preview{border:1px solid rgba(0,212,168,0.22);border-radius:18px;overflow:hidden;margin-top:20px}
+.pp-header{background:rgba(0,212,168,0.07);padding:18px 24px;border-bottom:1px solid rgba(0,212,168,0.15);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.pp-header h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--teal)}
+.pp-header-meta{font-size:12px;color:var(--muted)}
+.pp-body{padding:24px}
+.pp-meta-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.pp-meta-item{font-size:13px;color:var(--muted2)}.pp-meta-item strong{color:var(--white)}
+.pp-section{margin-bottom:22px}
+.pp-sec-title{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,212,168,0.12)}
+.pp-sec-body{font-size:14px;color:#bed4e8;line-height:1.8;white-space:pre-wrap}
+.pp-warmth{background:rgba(0,212,168,0.05);border:1px solid rgba(0,212,168,0.15);border-radius:12px;padding:16px;margin-top:16px;font-size:14px;color:var(--teal);line-height:1.7;font-style:italic;text-align:center}
+.cost-disclaimer{font-size:11px;color:var(--muted);margin-top:8px;font-style:italic;line-height:1.55}
+.send-bar{background:rgba(245,164,66,0.06);border:1px solid rgba(245,164,66,0.2);border-radius:14px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;flex-wrap:wrap}
+.send-bar-text{font-size:14px;color:var(--muted2)}.send-bar-text strong{color:var(--white)}
+.sent-conf{background:rgba(0,212,168,0.06);border:1px solid rgba(0,212,168,0.2);border-radius:12px;padding:14px 20px;text-align:center;color:var(--teal);font-size:14px;margin-top:14px;display:none}
+.download-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn-dl{background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:10px;padding:9px 18px;color:var(--muted2);font-size:13px;cursor:pointer;font-family:'DM Sans';transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.btn-dl:hover{color:var(--white);border-color:rgba(255,255,255,0.3)}
+
+/* ── NO PATIENT ── */
+.no-patient{text-align:center;padding:72px 24px}
+.no-patient .np-icon{font-size:52px;margin-bottom:18px;opacity:0.3}
+.no-patient h3{font-family:'Cormorant Garamond',serif;font-size:26px;margin-bottom:10px;color:var(--muted2)}
+.no-patient p{font-size:14px;color:var(--muted);margin-bottom:20px}
+.btn-go{background:var(--teal-dim);border:1px solid rgba(0,212,168,0.3);color:var(--teal);border-radius:10px;padding:10px 22px;cursor:pointer;font-family:'DM Sans';font-size:13px;font-weight:600;transition:all 0.2s}
+.btn-go:hover{background:rgba(0,212,168,0.18)}
+
+/* ── PATIENT PLAN VIEW ── */
+.pat-plan-card{border:1px solid rgba(0,212,168,0.2);border-radius:18px;overflow:hidden}
+.pat-plan-hdr{background:rgba(0,212,168,0.07);padding:20px 24px;border-bottom:1px solid rgba(0,212,168,0.15)}
+.pat-plan-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:4px}
+.pat-plan-sub{font-size:12px;color:var(--muted2)}
+.pat-plan-body{padding:24px}
+.pat-sec{margin-bottom:22px}
+.pat-sec-title{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,212,168,0.12)}
+.pat-sec-body{font-size:14px;color:#bed4e8;line-height:1.85;white-space:pre-wrap}
+.pat-warmth{background:rgba(0,212,168,0.05);border:1px solid rgba(0,212,168,0.15);border-radius:12px;padding:18px;margin-top:16px;font-size:14px;color:var(--teal);line-height:1.7;font-style:italic;text-align:center}
+.pat-wait{text-align:center;padding:64px 24px}
+.pat-wait-icon{font-size:48px;margin-bottom:16px;animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.95)}}
+.pat-wait h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:8px}
+.pat-wait p{color:var(--muted);font-size:14px;line-height:1.6}
+
+/* ── ROADMAP ── */
+.roadmap{display:flex;gap:0;margin:20px 0;overflow-x:auto;padding-bottom:8px}
+.rm-step{display:flex;flex-direction:column;align-items:center;min-width:100px;position:relative}
+.rm-step:not(:last-child)::after{content:'';position:absolute;top:20px;left:50%;width:100%;height:2px;background:var(--border2);z-index:0}
+.rm-dot{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;z-index:1;border:2px solid var(--border2);background:var(--ink3)}
+.rm-dot.done{background:rgba(0,212,168,0.15);border-color:var(--teal)}
+.rm-dot.current{background:rgba(255,201,71,0.15);border-color:var(--gold);animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(255,201,71,0.3)}50%{box-shadow:0 0 0 8px rgba(255,201,71,0)}}
+.rm-label{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.4;max-width:80px}
+
+/* ── QA CHAT (patient) ── */
+.qa-locked{text-align:center;padding:40px 24px}
+.qa-locked .ql-icon{font-size:36px;margin-bottom:12px;opacity:0.35}
+.qa-locked h4{font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:8px;color:var(--muted2)}
+.qa-locked p{font-size:13px;color:var(--muted)}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,212,168,0.25);border-top-color:var(--teal);border-radius:50%;animation:spin 0.65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--teal);color:var(--ink);padding:12px 22px;border-radius:12px;font-weight:600;font-size:13px;font-family:'DM Sans';z-index:9999;box-shadow:0 12px 32px rgba(0,212,168,0.3);transition:all 0.35s;transform:translateY(0);opacity:1}
+.toast.hide{transform:translateY(10px);opacity:0}
+
+/* ── PRINT STYLES ── */
+@media print{
+  body *{visibility:hidden}
+  #print-area,#print-area *{visibility:visible}
+  #print-area{position:fixed;inset:0;background:white;color:#111;padding:40px;font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7}
+  #print-area h1{font-size:24px;margin-bottom:4px}
+  #print-area .pm{font-size:12px;color:#555;margin-bottom:24px}
+  #print-area .ps{margin-bottom:18px}
+  #print-area .pst{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#00a085;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #00a085}
+  #print-area .psb{font-size:13px;color:#222;white-space:pre-wrap}
+  #print-area .pw{border:1px solid #00a085;padding:12px;border-radius:8px;color:#00a085;font-style:italic;text-align:center;margin-top:16px}
+  #print-area .disc{font-size:10px;color:#888;margin-top:6px;font-style:italic}
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:620px){
+  .role-cards{flex-direction:column;align-items:center}
+  .form-grid{grid-template-columns:1fr}
+  .fg.half{grid-column:span 1}
+  .send-bar{flex-direction:column;align-items:flex-start}
+  .pp-meta-row{flex-direction:column;gap:8px}
+  .approval-btns{flex-direction:column}
+  .chat-msgs{height:300px}
+}
+</style>
+</head>
+<body>
+
+<!-- hidden print area -->
+<div id="print-area" style="display:none"></div>
+
+<!-- ═══════════════ LANDING ═══════════════ -->
+<div id="landing" class="screen active">
+  <div class="land-grid"></div>
+  <div class="land-glow"></div>
+  <div class="land-inner">
+    <div class="land-eyebrow">NCCN-Grounded Clinical AI</div>
+    <div class="land-logo">Gradient <em>Descent</em></div>
+    <div class="land-sub">Connecting oncologists and patients through intelligent, guideline-grounded cancer care built for India</div>
+    <div class="role-cards">
+      <div class="rc doc" onclick="enterDoctor()">
+        <div class="rc-badge">Clinical</div>
+        <div class="rc-icon">🩺</div>
+        <div class="rc-title">Doctor View</div>
+        <div class="rc-desc">NCCN-grounded treatment plans, patient registry, approve and simplify before sending to patient</div>
+        <button class="rc-btn">Enter Doctor View →</button>
+      </div>
+      <div class="rc pat" onclick="enterPatient()">
+        <div class="rc-badge">Patient</div>
+        <div class="rc-icon">🫀</div>
+        <div class="rc-title">Patient View</div>
+        <div class="rc-desc">Understand your treatment in warm, simple language — in English or हिन्दी. Ask questions anytime.</div>
+        <button class="rc-btn">Enter Patient View →</button>
+      </div>
+    </div>
+    <div class="land-tags">
+      <span class="land-tag">NCCN Grounded</span>
+      <span class="land-tag">Nova Pro AI</span>
+      <span class="land-tag">Hindi Support</span>
+      <span class="land-tag">India Cost Aware</span>
+      <span class="land-tag">Doctor Gated</span>
+      <span class="land-tag">Patient Safe</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DOCTOR ═══════════════ -->
+<div id="doctor" class="screen">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">Gradient <em>Descent</em></div>
+      <div class="role-pill pill-doc">Doctor</div>
+    </div>
+    <div class="tb-right">
+      <span class="sent-pill" id="sent-pill">✓ Plan Sent</span>
+      <button class="tb-btn" onclick="goHome()">← Switch View</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="dtab-reg" onclick="dTab('reg',this)">👥 Patient Registry</button>
+    <button class="tab" id="dtab-ai" onclick="dTab('ai',this)">🧠 Clinical AI</button>
+  </div>
+  <div class="content">
+
+    <!-- REGISTRY TAB -->
+    <div id="dpanel-reg" class="tab-panel active">
+      <div class="card">
+        <div class="row" style="margin-bottom:18px">
+          <div class="card-title" style="margin-bottom:0">➕ New Patient</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--muted);align-self:center">5 demo cases preloaded below</span>
+          </div>
+        </div>
+
+        <div class="sec-label">Patient Profile</div>
+        <div class="form-grid">
+          <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="f-name" placeholder="Patient full name"/></div>
+          <div class="fg"><label class="fl">Age</label><input class="fi" id="f-age" placeholder="e.g. 45" type="number"/></div>
+          <div class="fg"><label class="fl">Gender</label><select class="fs" id="f-gender"><option>Female</option><option>Male</option><option>Other</option></select></div>
+          <div class="fg"><label class="fl">Cancer Type</label><select class="fs" id="f-cancer"><option>Breast Cancer</option><option>Oral Cancer</option><option>Cervical Cancer</option><option>Other</option></select></div>
+          <div class="fg full"><label class="fl">Diagnosis / Chief Complaint</label><input class="fi" id="f-diag" placeholder="e.g. Stage IIB HER2+ invasive ductal carcinoma, presenting with palpable right breast mass"/></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label">Clinical Status</div>
+        <div class="form-grid">
+          <div class="fg"><label class="fl">Stage</label><input class="fi" id="f-stage" placeholder="e.g. IIB, IIIA, IV"/></div>
+          <div class="fg"><label class="fl">ECOG</label><select class="fs" id="f-ecog"><option value="0">0 — Fully active</option><option value="1" selected>1 — Restricted strenuous</option><option value="2">2 — Ambulatory</option><option value="3">3 — Limited self-care</option></select></div>
+          <div class="fg"><label class="fl">Visceral Crisis</label><select class="fs" id="f-visceral"><option>No</option><option>Yes</option></select></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label">Biomarkers</div>
+        <div class="form-grid">
+          <div class="fg"><label class="fl">ER Status</label><select class="fs" id="f-er"><option>Positive</option><option>Negative</option><option>N/A</option><option>Unknown</option></select></div>
+          <div class="fg"><label class="fl">PR Status</label><select class="fs" id="f-pr"><option>Negative</option><option>Positive</option><option>N/A</option><option>Unknown</option></select></div>
+          <div class="fg"><label class="fl">HER2 Status</label><select class="fs" id="f-her2"><option>Positive (3+)</option><option>Equivocal (2+)</option><option>Low (1+)</option><option>Negative</option><option>N/A</option></select></div>
+          <div class="fg"><label class="fl">PD-L1 CPS</label><input class="fi" id="f-pdl1" placeholder="e.g. 0, CPS 12, N/A"/></div>
+          <div class="fg"><label class="fl">BRCA Status</label><select class="fs" id="f-brca"><option>Negative</option><option>BRCA1 Mutated</option><option>BRCA2 Mutated</option><option>Unknown</option><option>N/A</option></select></div>
+          <div class="fg"><label class="fl">Ki-67 Index</label><input class="fi" id="f-ki67" placeholder="e.g. 38%"/></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label">Metastatic Sites</div>
+        <div class="form-grid">
+          <div class="fg"><label class="fl">Brain Mets</label><select class="fs" id="f-brain"><option>No</option><option>Yes</option></select></div>
+          <div class="fg"><label class="fl">Liver Mets</label><select class="fs" id="f-liver"><option>No</option><option>Yes</option></select></div>
+          <div class="fg"><label class="fl">Bone Mets</label><select class="fs" id="f-bone"><option>No</option><option>Yes</option></select></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label">Radiation History</div>
+        <div class="form-grid">
+          <div class="fg"><label class="fl">Radiation Given</label><select class="fs" id="f-rad-given" onchange="toggleRadFields()"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+          <div class="fg" id="frad-site" style="display:none"><label class="fl">Site / Field</label><input class="fi" id="f-rad-site" placeholder="e.g. Right neck + primary"/></div>
+          <div class="fg" id="frad-dose" style="display:none"><label class="fl">Dose (Gy)</label><input class="fi" id="f-rad-dose" placeholder="e.g. 60"/></div>
+          <div class="fg" id="frad-frac" style="display:none"><label class="fl">Fractions</label><input class="fi" id="f-rad-frac" placeholder="e.g. 30"/></div>
+          <div class="fg" id="frad-intent" style="display:none"><label class="fl">Intent</label><select class="fs" id="f-rad-intent"><option>Definitive</option><option>Adjuvant</option><option>Neoadjuvant</option><option>Palliative</option><option>Definitive concurrent chemoradiation</option></select></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label">Treatment History</div>
+        <div id="tx-rows">
+          <div class="form-grid" style="margin-bottom:8px">
+            <div class="fg"><label class="fl">Line</label><input class="fi tx-line" placeholder="1"/></div>
+            <div class="fg half"><label class="fl">Regimen</label><input class="fi tx-reg" placeholder="e.g. Docetaxel + Trastuzumab + Pertuzumab"/></div>
+            <div class="fg"><label class="fl">Response</label><select class="fs tx-res"><option>Complete Response</option><option>Partial Response</option><option>Stable Disease</option><option>Progression</option><option>Ongoing</option></select></div>
+          </div>
+        </div>
+        <button class="add-row" onclick="addTxRow()">+ Add treatment line</button>
+
+        <div class="divider"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="savePatient()">💾 Save to Registry</button>
+        </div>
+      </div>
+
+      <!-- PATIENT LIST -->
+      <div class="card">
+        <div class="row" style="margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">📋 Patient Registry</div>
+          <span id="pat-count" style="font-size:13px;color:var(--muted)">0 patients</span>
+        </div>
+        <div class="divider"></div>
+        <div id="patient-list"><div class="empty-state"><div class="ei">🗂️</div>No patients yet.</div></div>
+      </div>
+    </div>
+
+    <!-- AI TAB -->
+    <div id="dpanel-ai" class="tab-panel">
+      <div id="no-patient-state">
+        <div class="no-patient">
+          <div class="np-icon">🧠</div>
+          <h3>No Patient Selected</h3>
+          <p>Go to Patient Registry and click "Load into AI" to begin.</p>
+          <button class="btn-go" onclick="dTab('reg',document.getElementById('dtab-reg'))">← Go to Registry</button>
+        </div>
+      </div>
+
+      <div id="ai-ready-state" style="display:none">
+        <div class="doc-name-bar">
+          <label>Your Name</label>
+          <input id="doc-name" placeholder="Dr. Sharma" oninput="saveState()"/>
+        </div>
+
+        <div class="pat-banner">
+          <div>
+            <div class="pb-name" id="banner-name">—</div>
+            <div class="pb-meta" id="banner-meta">—</div>
+          </div>
+          <div class="pb-tag">Active Patient</div>
+        </div>
+
+        <div class="disclaimer">⚕ Responses are grounded in NCCN guidelines (Breast, Oral, Cervical PDFs). Decision support only — not a prescription tool. Doctor approval required before any plan is shared with the patient.</div>
+
+        <div class="chat-wrap">
+          <div class="chat-msgs" id="doc-msgs"></div>
+          <div class="sugs" id="doc-sugs"></div>
+          <div class="chat-input-row">
+            <input class="chat-inp" id="doc-inp" placeholder="Ask for a treatment plan or any clinical question…" onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendDocMsg()"/>
+            <button class="chat-send" id="doc-send-btn" onclick="sendDocMsg()">Send</button>
+          </div>
+        </div>
+
+        <!-- APPROVAL BAR -->
+        <div class="approval-bar" id="approval-bar" style="display:none">
+          <h4>✦ Review AI Response</h4>
+          <p>Review the clinical plan above. Edit as needed, then generate the simplified patient version.</p>
+          <div class="approval-btns">
+            <button class="btn-gold" onclick="openEdit()">✏️ Edit &amp; Approve Plan</button>
+            <button class="btn-danger" onclick="rejectPlan()">✖ Revise — Ask Again</button>
+          </div>
+        </div>
+
+        <!-- EDIT SECTION -->
+        <div class="edit-plan-section" id="edit-section" style="display:none">
+          <h4>Edit Treatment Plan — this text will be simplified for the patient</h4>
+          <textarea class="edit-plan-ta" id="edit-ta" placeholder="The AI response will appear here. Edit as needed before generating patient version."></textarea>
+          <div class="simplify-bar">
+            <span class="simplify-note">✦ The patient will receive a warm, simplified AI version of whatever you write here</span>
+            <button class="btn-primary" id="simplify-btn" onclick="generatePatientPlan()">✨ Generate Patient Plan</button>
+          </div>
+        </div>
+
+        <!-- PATIENT PLAN PREVIEW -->
+        <div id="plan-preview" style="display:none">
+          <div class="plan-preview">
+            <div class="pp-header">
+              <h3>Patient Plan Preview</h3>
+              <span class="pp-header-meta" id="pp-date">—</span>
+            </div>
+            <div class="pp-body">
+              <div class="pp-meta-row" id="pp-meta"></div>
+              <div class="pp-section"><div class="pp-sec-title">📋 History &amp; Presenting Complaints</div><div class="pp-sec-body" id="pp-history"></div></div>
+              <div class="pp-section"><div class="pp-sec-title">💊 Treatment Plan — Medicines, Doses &amp; Cycles</div><div class="pp-sec-body" id="pp-treatment"></div></div>
+              <div class="pp-section">
+                <div class="pp-sec-title">💰 Estimated Costs (India)</div>
+                <div class="pp-sec-body" id="pp-costs"></div>
+                <div class="cost-disclaimer">⚠ All costs are approximate and vary significantly by hospital, city, brand, and insurance coverage.</div>
+              </div>
+              <div class="pp-section"><div class="pp-sec-title">🌿 Diet, Exercise &amp; Self-Care</div><div class="pp-sec-body" id="pp-selfcare"></div></div>
+              <div class="pp-warmth" id="pp-warmth"></div>
+            </div>
+          </div>
+          <div class="download-bar">
+            <button class="btn-dl" onclick="downloadText()">⬇ Download as Text</button>
+            <button class="btn-dl" onclick="downloadPDF()">🖨 Print / Save as PDF</button>
+          </div>
+          <div class="send-bar">
+            <div class="send-bar-text"><strong>Ready to send?</strong> The patient will see this simplified version and can ask questions.</div>
+            <button class="btn-amber" onclick="sendToPatient()">📤 Send to Patient View</button>
+          </div>
+          <div class="sent-conf" id="sent-conf">✓ Plan sent — patient can now read it in English or हिन्दी and ask questions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PATIENT ═══════════════ -->
+<div id="patient" class="screen">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">Gradient <em>Descent</em></div>
+      <div class="role-pill pill-pat">Patient</div>
+    </div>
+    <div class="tb-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">English</button>
+        <button class="lang-btn" id="btn-hi" onclick="setLang('hi')">हिन्दी</button>
+      </div>
+      <button class="tb-btn" onclick="goHome()">← Switch View</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="ptab-plan" onclick="pTab('plan',this)">📄 My Plan</button>
+    <button class="tab" id="ptab-ask" onclick="pTab('ask',this)">💬 Ask Questions</button>
+  </div>
+  <div class="content">
+
+    <!-- PLAN TAB -->
+    <div id="ppanel-plan" class="tab-panel active">
+      <div id="pat-waiting" class="card">
+        <div class="pat-wait">
+          <div class="pat-wait-icon">⏳</div>
+          <h3 id="pw-title">Your doctor is preparing your plan</h3>
+          <p id="pw-sub">Your personalised treatment plan will appear here once your doctor sends it. It will be written in simple, clear language just for you.</p>
+        </div>
+      </div>
+      <div id="pat-plan-content" style="display:none">
+        <div class="pat-plan-card">
+          <div class="pat-plan-hdr">
+            <div class="pat-plan-name" id="pp-pat-name">—</div>
+            <div class="pat-plan-sub" id="pp-pat-sub">—</div>
+          </div>
+          <div class="pat-plan-body">
+            <div class="pat-sec"><div class="pat-sec-title" id="pps-h1">📋 Your History &amp; Complaints</div><div class="pat-sec-body" id="pps-history"></div></div>
+            <div class="pat-sec"><div class="pat-sec-title" id="pps-h2">💊 Your Treatment Plan</div><div class="pat-sec-body" id="pps-treatment"></div></div>
+            <div class="pat-sec">
+              <div class="pat-sec-title" id="pps-h3">💰 Estimated Costs</div>
+              <div class="pat-sec-body" id="pps-costs"></div>
+              <div class="cost-disclaimer" id="pps-disc">⚠ Costs vary by hospital, location, and insurance. Ask your hospital about Ayushman Bharat PMJAY for coverage up to ₹5 lakh.</div>
+            </div>
+            <div class="pat-sec"><div class="pat-sec-title" id="pps-h4">🌿 Diet, Exercise &amp; Self-Care</div><div class="pat-sec-body" id="pps-selfcare"></div></div>
+            <div class="pat-warmth" id="pps-warmth"></div>
+          </div>
+        </div>
+        <div class="download-bar" style="margin-top:16px">
+          <button class="btn-dl" onclick="downloadText()">⬇ Download as Text</button>
+          <button class="btn-dl" onclick="downloadPDF()">🖨 Print / Save as PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASK TAB -->
+    <div id="ppanel-ask" class="tab-panel">
+      <div class="card">
+        <div class="card-title" id="qa-title">💬 Ask Me Anything</div>
+        <div id="qa-locked-view">
+          <div class="qa-locked">
+            <div class="ql-icon">🔒</div>
+            <h4 id="qa-locked-title">Waiting for your treatment plan</h4>
+            <p id="qa-locked-sub">Questions unlock once your doctor sends your treatment plan.</p>
+          </div>
+        </div>
+        <div id="qa-open-view" style="display:none">
+          <div class="chat-wrap">
+            <div class="chat-msgs" id="pat-msgs">
+              <div class="msg ai">
+                <div class="msg-label">Health Assistant</div>
+                <div class="bubble" id="pat-greeting">Hello! I'm here to help you understand your treatment. Ask me anything about your medicines, side effects, diet, or how you're feeling.</div>
+              </div>
+            </div>
+            <div class="sugs" id="pat-sugs"></div>
+            <div class="chat-input-row">
+              <input class="chat-inp" id="pat-inp" placeholder="Ask about your treatment…" onkeydown="if(event.key==='Enter')sendPatMsg()"/>
+              <button class="chat-send" onclick="sendPatMsg()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════════════
+const API = "https://lz4abyoqce.execute-api.ap-south-1.amazonaws.com";
+const LS_KEY = "gd_v5_state";
+
+// ── 5 REALISTIC PRELOADED PATIENTS ────────────────────────────────────────────
+const DEMO_PATIENTS = [
+  {
+    id: "demo1", name: "Meera Krishnan", age: "42", gender: "Female",
+    cancer: "Breast Cancer",
+    diagnosis: "Invasive Ductal Carcinoma, Right Breast — Stage IIB (T2N1M0). 3.2cm palpable mass with 2 ipsilateral axillary lymph nodes on ultrasound. Core biopsy: Grade 3 IDC. HER2 3+ by IHC. ER positive, PR negative.",
+    stage: "IIB", ecog: "1", visceral: "No",
+    er: "Positive", pr: "Negative", her2: "Positive (3+)", pdl1: "N/A", brca: "Negative", ki67: "45%",
+    brain: "No", liver: "No", bone: "No",
+    radiation: { given: "No" },
+    tx: [{ line: "1", regimen: "AC (Doxorubicin 60mg/m² + Cyclophosphamide 600mg/m²) × 4 cycles", response: "Partial Response" }],
+    status: "new"
+  },
+  {
+    id: "demo2", name: "Rajesh Nair", age: "58", gender: "Male",
+    cancer: "Oral Cancer",
+    diagnosis: "Squamous Cell Carcinoma, Left buccal mucosa — Stage III (T3N1M0). 4.2cm ulceroproliferative lesion with ipsilateral Level IB submandibular lymphadenopathy (1.8cm). Moderately differentiated SCC. p16 negative. Non-smoker.",
+    stage: "III", ecog: "1", visceral: "No",
+    er: "N/A", pr: "N/A", her2: "N/A", pdl1: "N/A", brca: "N/A", ki67: "N/A",
+    brain: "No", liver: "No", bone: "No",
+    radiation: { given: "Yes", site: "Left neck + primary (IMRT)", dose: "60", fractions: "30", intent: "Definitive concurrent chemoradiation" },
+    tx: [{ line: "1", regimen: "Cisplatin 100mg/m² q3w concurrent with IMRT × 3 cycles", response: "Complete Response" }],
+    status: "new"
+  },
+  {
+    id: "demo3", name: "Sunita Devi", age: "52", gender: "Female",
+    cancer: "Cervical Cancer",
+    diagnosis: "Squamous Cell Carcinoma, Cervix — Stage IIB (FIGO 2018). MRI: 5.1cm cervical mass with bilateral parametrial extension, no pelvic sidewall. HPV 16 positive. Presents with post-coital bleeding × 6 months and purulent discharge.",
+    stage: "IIB", ecog: "1", visceral: "No",
+    er: "N/A", pr: "N/A", her2: "N/A", pdl1: "N/A", brca: "N/A", ki67: "N/A",
+    brain: "No", liver: "No", bone: "No",
+    radiation: { given: "Yes", site: "Whole pelvis + intracavitary brachytherapy boost", dose: "45", fractions: "25", intent: "Definitive concurrent chemoradiation" },
+    tx: [{ line: "1", regimen: "Cisplatin 40mg/m² weekly concurrent with EBRT × 5 cycles", response: "Ongoing" }],
+    status: "new"
+  },
+  {
+    id: "demo4", name: "Fatima Sheikh", age: "38", gender: "Female",
+    cancer: "Breast Cancer",
+    diagnosis: "Triple Negative Breast Cancer — Stage IV metastatic. Bone mets (L2–L4 vertebrae, bilateral iliac wings) and liver mets (3 lesions, largest 3.8cm). BRCA1 germline mutation confirmed. PD-L1 CPS 12. Presenting with severe back pain and 8kg weight loss over 3 months.",
+    stage: "IV", ecog: "2", visceral: "Yes",
+    er: "Negative", pr: "Negative", her2: "Negative", pdl1: "CPS 12", brca: "BRCA1 Mutated", ki67: "78%",
+    brain: "No", liver: "Yes", bone: "Yes",
+    radiation: { given: "No" },
+    tx: [
+      { line: "1", regimen: "Carboplatin AUC5 + Gemcitabine 1000mg/m² D1,D8 q3w × 4 cycles", response: "Progression" },
+      { line: "2", regimen: "Pembrolizumab 200mg q3w + nab-Paclitaxel 100mg/m² D1,D8,D15 q4w", response: "Partial Response" }
+    ],
+    status: "new"
+  },
+  {
+    id: "demo5", name: "Anand Pillai", age: "65", gender: "Male",
+    cancer: "Oral Cancer",
+    diagnosis: "Well-differentiated SCC, Floor of mouth — Stage II (T2N0M0). 2.8cm exophytic lesion, no palpable cervical lymphadenopathy. PET-CT: No distant metastases. Incidental finding on dental examination. Never-smoker, no alcohol, no beetle nut use.",
+    stage: "II", ecog: "0", visceral: "No",
+    er: "N/A", pr: "N/A", her2: "N/A", pdl1: "N/A", brca: "N/A", ki67: "N/A",
+    brain: "No", liver: "No", bone: "No",
+    radiation: { given: "No" },
+    tx: [],
+    status: "new"
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE — single source of truth, always synced to localStorage
+// ═══════════════════════════════════════════════════════════════════════════════
+let STATE = {
+  patients: [...DEMO_PATIENTS],
+  doctorName: "",
+  activePatientId: null,
+  docChatHistory: [],
+  lastClinicalAnswer: "",
+  approvedPlanText: "",
+  simplifiedPlan: null,   // { raw, history, treatment, costs, selfcare, warmth, patientName, date, doctor, cancer }
+  planReleased: false,
+  lang: "en",
+  patChatHistory: []
+};
+
+function saveState() {
+  STATE.doctorName = document.getElementById('doc-name')?.value || STATE.doctorName;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(STATE)); } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // Preserve demo patients but merge any user-added ones
+      const demoIds = DEMO_PATIENTS.map(p => p.id);
+      const userAdded = (saved.patients || []).filter(p => !demoIds.includes(p.id));
+      STATE = { ...STATE, ...saved, patients: [...DEMO_PATIENTS, ...userAdded] };
+    }
+  } catch(e) {}
+}
+
+function getActivePatient() {
+  return STATE.patients.find(p => p.id === STATE.activePatientId) || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('active'));
+}
+
+function enterDoctor() {
+  loadState();
+  show('doctor');
+  renderPatientList();
+  if (document.getElementById('doc-name')) document.getElementById('doc-name').value = STATE.doctorName;
+  if (STATE.activePatientId) restoreAITab();
+}
+
+function enterPatient() {
+  loadState();
+  applyLang();
+  show('patient');
+  if (STATE.planReleased && STATE.simplifiedPlan) showPatientPlan();
+}
+
+function goHome() { show('landing'); }
+
+function dTab(id, btn) {
+  document.querySelectorAll('#doctor .tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#doctor .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('dpanel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function pTab(id, btn) {
+  document.querySelectorAll('#patient .tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#patient .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('ppanel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORM
+// ═══════════════════════════════════════════════════════════════════════════════
+function toggleRadFields() {
+  const given = document.getElementById('f-rad-given').value === 'Yes';
+  ['frad-site','frad-dose','frad-frac','frad-intent'].forEach(id => {
+    document.getElementById(id).style.display = given ? 'flex' : 'none';
+  });
+}
+
+function addTxRow() {
+  const n = document.querySelectorAll('.tx-line').length + 1;
+  const d = document.createElement('div');
+  d.className = 'form-grid'; d.style.marginBottom = '8px';
+  d.innerHTML = `<div class="fg"><label class="fl">Line</label><input class="fi tx-line" placeholder="${n}"/></div>
+    <div class="fg half"><label class="fl">Regimen</label><input class="fi tx-reg" placeholder="e.g. Eribulin 1.4mg/m²"/></div>
+    <div class="fg"><label class="fl">Response</label><select class="fs tx-res"><option>Complete Response</option><option>Partial Response</option><option>Stable Disease</option><option>Progression</option><option>Ongoing</option></select></div>`;
+  document.getElementById('tx-rows').appendChild(d);
+}
+
+function collectForm() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('⚠ Patient name is required'); return null; }
+  const tx = [];
+  document.querySelectorAll('.tx-line').forEach((el, i) => {
+    const reg = document.querySelectorAll('.tx-reg')[i]?.value.trim();
+    if (reg) tx.push({ line: el.value || String(i+1), regimen: reg, response: document.querySelectorAll('.tx-res')[i]?.value || 'Ongoing' });
+  });
+  const radGiven = document.getElementById('f-rad-given').value;
+  const rad = radGiven === 'Yes' ? {
+    given: 'Yes',
+    site: document.getElementById('f-rad-site').value,
+    dose: document.getElementById('f-rad-dose').value,
+    fractions: document.getElementById('f-rad-frac').value,
+    intent: document.getElementById('f-rad-intent').value
+  } : { given: 'No' };
+  return {
+    id: 'u_' + Date.now(), status: 'new',
+    name, age: document.getElementById('f-age').value,
+    gender: document.getElementById('f-gender').value,
+    cancer: document.getElementById('f-cancer').value,
+    diagnosis: document.getElementById('f-diag').value || name,
+    stage: document.getElementById('f-stage').value,
+    ecog: document.getElementById('f-ecog').value,
+    visceral: document.getElementById('f-visceral').value,
+    er: document.getElementById('f-er').value, pr: document.getElementById('f-pr').value,
+    her2: document.getElementById('f-her2').value, pdl1: document.getElementById('f-pdl1').value,
+    brca: document.getElementById('f-brca').value, ki67: document.getElementById('f-ki67').value,
+    brain: document.getElementById('f-brain').value, liver: document.getElementById('f-liver').value,
+    bone: document.getElementById('f-bone').value, radiation: rad, tx
+  };
+}
+
+function clearForm() {
+  ['f-name','f-age','f-diag','f-stage','f-pdl1','f-ki67'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
+  ['f-gender','f-ecog','f-visceral','f-er','f-pr','f-her2','f-brca','f-brain','f-liver','f-bone'].forEach(id => { const e = document.getElementById(id); if(e) e.selectedIndex=0; });
+  document.getElementById('f-rad-given').value = 'No';
+  toggleRadFields();
+  document.getElementById('tx-rows').innerHTML = `<div class="form-grid" style="margin-bottom:8px">
+    <div class="fg"><label class="fl">Line</label><input class="fi tx-line" placeholder="1"/></div>
+    <div class="fg half"><label class="fl">Regimen</label><input class="fi tx-reg" placeholder="e.g. Docetaxel + HP"/></div>
+    <div class="fg"><label class="fl">Response</label><select class="fs tx-res"><option>Complete Response</option><option>Partial Response</option><option>Stable Disease</option><option>Progression</option><option>Ongoing</option></select></div>
+  </div>`;
+}
+
+function savePatient() {
+  const p = collectForm();
+  if (!p) return;
+  const existing = STATE.patients.findIndex(x => x.name.toLowerCase() === p.name.toLowerCase() && !x.id.startsWith('demo'));
+  if (existing >= 0) { STATE.patients[existing] = { ...STATE.patients[existing], ...p }; toast(`↺ ${p.name} updated`); }
+  else { STATE.patients.push(p); toast(`✓ ${p.name} added to registry`); }
+  saveState();
+  renderPatientList();
+  clearForm();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATIENT LIST
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderPatientList() {
+  const el = document.getElementById('patient-list');
+  const cnt = document.getElementById('pat-count');
+  cnt.textContent = `${STATE.patients.length} patient${STATE.patients.length !== 1 ? 's' : ''}`;
+  if (!STATE.patients.length) { el.innerHTML = '<div class="empty-state"><div class="ei">🗂️</div>No patients yet.</div>'; return; }
+  el.innerHTML = '<div class="patient-list-wrap">' + STATE.patients.map((p, i) => `
+    <div class="pr ${STATE.activePatientId === p.id ? 'active' : ''}">
+      <div>
+        <div class="pr-name">${p.name}</div>
+        <div class="pr-meta">${p.age ? p.age+'y · ' : ''}${p.gender} · ${p.cancer}${p.stage ? ' · Stage '+p.stage : ''}${p.ecog !== undefined ? ' · ECOG '+p.ecog : ''}</div>
+        ${p.radiation?.given === 'Yes' ? `<div class="pr-meta" style="color:var(--blue);margin-top:2px">☢ Radiation: ${p.radiation.site} ${p.radiation.dose}Gy</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="pr-tag ${p.status==='sent'?'tag-sent':p.status==='active'?'tag-active':'tag-new'}">${p.status==='sent'?'✓ Sent':p.status==='active'?'In AI':'New'}</span>
+        <button class="pr-load" onclick="loadPatient(${i})">Load into AI →</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function loadPatient(i) {
+  const p = STATE.patients[i];
+  STATE.activePatientId = p.id;
+  STATE.patients[i].status = 'active';
+  STATE.docChatHistory = [];
+  STATE.lastClinicalAnswer = '';
+  STATE.approvedPlanText = '';
+  saveState();
+  renderPatientList();
+
+  document.getElementById('no-patient-state').style.display = 'none';
+  document.getElementById('ai-ready-state').style.display = 'block';
+  document.getElementById('doc-name').value = STATE.doctorName;
+  document.getElementById('banner-name').textContent = p.name;
+  document.getElementById('banner-meta').textContent = [
+    p.age ? p.age+'y' : null, p.gender, p.cancer, p.stage ? 'Stage '+p.stage : null, 'ECOG '+p.ecog,
+    p.radiation?.given === 'Yes' ? `Radiation: ${p.radiation.site}` : null
+  ].filter(Boolean).join(' · ');
+
+  document.getElementById('approval-bar').style.display = 'none';
+  document.getElementById('edit-section').style.display = 'none';
+  document.getElementById('plan-preview').style.display = 'none';
+  document.getElementById('sent-conf').style.display = 'none';
+
+  const msgs = document.getElementById('doc-msgs');
+  msgs.innerHTML = `<div class="msg ai"><div class="msg-label">Clinical AI (NCCN)</div><div class="bubble"><strong>${p.name}</strong> loaded. Ask for a full NCCN treatment plan or any clinical question about this case.</div></div>`;
+
+  document.getElementById('doc-sugs').innerHTML = [
+    `Generate full NCCN treatment plan for ${p.name}`,
+    `What are the guideline-recommended regimens for ${p.cancer} Stage ${p.stage || ''}?`,
+    `What monitoring is required during treatment?`
+  ].map(s => `<button class="sug" onclick="setDocInp(this.textContent)">${s}</button>`).join('');
+
+  dTab('ai', document.getElementById('dtab-ai'));
+}
+
+function restoreAITab() {
+  const p = getActivePatient();
+  if (!p) return;
+  document.getElementById('no-patient-state').style.display = 'none';
+  document.getElementById('ai-ready-state').style.display = 'block';
+  document.getElementById('banner-name').textContent = p.name;
+  document.getElementById('banner-meta').textContent = [p.age+'y', p.gender, p.cancer, p.stage ? 'Stage '+p.stage : null, 'ECOG '+p.ecog].filter(Boolean).join(' · ');
+  if (STATE.simplifiedPlan && STATE.planReleased) {
+    document.getElementById('sent-conf').style.display = 'block';
+    document.getElementById('sent-pill').style.display = 'inline-block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCTOR CHAT
+// ═══════════════════════════════════════════════════════════════════════════════
+function setDocInp(t) { document.getElementById('doc-inp').value = t; }
+
+async function sendDocMsg() {
+  const p = getActivePatient();
+  if (!p) return;
+  const inp = document.getElementById('doc-inp');
+  const msg = inp.value.trim(); if (!msg) return;
+  inp.value = '';
+  const btn = document.getElementById('doc-send-btn'); btn.disabled = true;
+  addMsg('doc-msgs', 'user', 'Dr.', msg);
+  const tid = addTyping('doc-msgs', 'Clinical AI (NCCN)');
+
+  const bm = { ER: p.er, PR: p.pr, HER2: p.her2, Ki67: p.ki67, BRCA: p.brca, PD_L1: p.pdl1 };
+  const rad = p.radiation || {};
+
+  try {
+    const res = await fetch(`${API}/clinical/query`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: msg,
+        patient: {
+          name: p.name, age: parseInt(p.age)||0, gender: p.gender,
+          cancer_type: p.cancer,
+          stage: p.stage, ecog: p.ecog,
+          conditions: [p.diagnosis, `Stage ${p.stage}`, `ECOG ${p.ecog}`].filter(Boolean),
+          biomarkers: bm,
+          radiation: rad,
+          treatment_history: p.tx || []
+        },
+        chat_history: STATE.docChatHistory.slice(-6)
+      })
+    });
+    const data = await res.json();
+    removeTyping(tid);
+    const answer = data.answer || 'No response.';
+    STATE.lastClinicalAnswer = answer;
+    STATE.docChatHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: answer });
+    saveState();
+    addMsg('doc-msgs', 'ai', 'Clinical AI (NCCN)', answer, data.sources);
+    if (data.approval_required) {
+      document.getElementById('approval-bar').style.display = 'block';
+    }
+  } catch(e) {
+    removeTyping(tid);
+    addMsg('doc-msgs', 'ai', 'Clinical AI (NCCN)', '⚠ Could not reach backend. Check your AWS API Gateway and Lambda.');
+  }
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPROVAL + EDIT
+// ═══════════════════════════════════════════════════════════════════════════════
+function openEdit() {
+  document.getElementById('edit-ta').value = STATE.lastClinicalAnswer;
+  document.getElementById('edit-section').style.display = 'block';
+  document.getElementById('approval-bar').style.display = 'none';
+  document.getElementById('edit-ta').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function rejectPlan() {
+  document.getElementById('approval-bar').style.display = 'none';
+  document.getElementById('edit-section').style.display = 'none';
+  toast('Revise — ask a follow-up question in the chat');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GENERATE PATIENT PLAN (/patient/simplify)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function generatePatientPlan() {
+  const p = getActivePatient();
+  const doctorText = document.getElementById('edit-ta').value.trim();
+  if (!doctorText) { toast('⚠ No plan text to simplify'); return; }
+
+  STATE.approvedPlanText = doctorText;
+  STATE.doctorName = document.getElementById('doc-name').value.trim() || 'Your Doctor';
+  saveState();
+
+  const btn = document.getElementById('simplify-btn');
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+
+  try {
+    const res = await fetch(`${API}/patient/simplify`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        doctor_plan: doctorText,
+        patient: { name: p ? p.name : '', cancer_type: p ? p.cancer : 'Cancer' },
+        language: STATE.lang,
+        doctor_name: STATE.doctorName
+      })
+    });
+    const data = await res.json();
+    const raw = data.simplified_plan || '';
+    const plan = parsePlan(raw, p, STATE.doctorName);
+    STATE.simplifiedPlan = plan;
+    saveState();
+    renderPlanPreview(plan);
+    document.getElementById('plan-preview').style.display = 'block';
+    document.getElementById('plan-preview').scrollIntoView({ behavior: 'smooth' });
+    toast('✓ Patient plan generated');
+  } catch(e) {
+    toast('⚠ Could not generate patient plan — check backend');
+  }
+  btn.disabled = false; btn.textContent = '✨ Generate Patient Plan';
+}
+
+function parsePlan(raw, p, doctor) {
+  const extract = (tag, nextTags) => {
+    const marker = `SECTION_${tag}:`;
+    const start = raw.indexOf(marker);
+    if (start === -1) return '';
+    let after = raw.indexOf('\n', start);
+    if (after === -1) return '';
+    after++;
+    let end = raw.length;
+    for (const nt of nextTags) {
+      const ni = raw.indexOf(`SECTION_${nt}:`);
+      if (ni > after && ni < end) end = ni;
+    }
+    const warmthIdx = raw.indexOf('WARMTH:');
+    if (warmthIdx > after && warmthIdx < end) end = warmthIdx;
+    return raw.slice(after, end).trim();
+  };
+  const warmthStart = raw.indexOf('WARMTH:');
+  const warmth = warmthStart >= 0
+    ? raw.slice(raw.indexOf('\n', warmthStart) + 1).trim()
+    : `You are strong and you are not alone in this journey. Your care team is with you every step of the way. With care and hope, ${doctor} & Team Gradient Descent 💙`;
+  const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  return {
+    raw,
+    history:   extract('HISTORY',   ['TREATMENT','COSTS','SELFCARE']),
+    treatment: extract('TREATMENT', ['COSTS','SELFCARE']),
+    costs:     extract('COSTS',     ['SELFCARE']),
+    selfcare:  extract('SELFCARE',  []),
+    warmth,
+    patientName: p ? p.name : '',
+    cancer: p ? p.cancer : '',
+    date: today,
+    doctor,
+    stage: p ? p.stage : ''
+  };
+}
+
+function renderPlanPreview(plan) {
+  const today = plan.date;
+  document.getElementById('pp-date').textContent = today;
+  document.getElementById('pp-meta').innerHTML = `
+    <div class="pp-meta-item"><strong>Patient:</strong> ${plan.patientName}</div>
+    <div class="pp-meta-item"><strong>Diagnosis:</strong> ${plan.cancer} Stage ${plan.stage}</div>
+    <div class="pp-meta-item"><strong>Doctor:</strong> ${plan.doctor}</div>
+    <div class="pp-meta-item"><strong>Date:</strong> ${today}</div>`;
+  document.getElementById('pp-history').textContent   = plan.history   || '—';
+  document.getElementById('pp-treatment').textContent = plan.treatment || '—';
+  document.getElementById('pp-costs').textContent     = plan.costs     || '—';
+  document.getElementById('pp-selfcare').textContent  = plan.selfcare  || '—';
+  document.getElementById('pp-warmth').textContent    = plan.warmth;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEND TO PATIENT
+// ═══════════════════════════════════════════════════════════════════════════════
+function sendToPatient() {
+  if (!STATE.simplifiedPlan) return;
+  STATE.planReleased = true;
+  const p = getActivePatient();
+  if (p) {
+    const idx = STATE.patients.findIndex(x => x.id === p.id);
+    if (idx >= 0) STATE.patients[idx].status = 'sent';
+  }
+  saveState();
+  renderPatientList();
+  document.getElementById('sent-conf').style.display = 'block';
+  document.getElementById('sent-pill').style.display = 'inline-block';
+  toast('✓ Plan sent to patient view');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATIENT VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+function showPatientPlan() {
+  const plan = STATE.simplifiedPlan;
+  if (!plan) return;
+  document.getElementById('pat-waiting').style.display = 'none';
+  document.getElementById('pat-plan-content').style.display = 'block';
+  const hi = STATE.lang === 'hi';
+  document.getElementById('pp-pat-name').textContent = plan.patientName || '—';
+  document.getElementById('pp-pat-sub').textContent = `${plan.cancer}${plan.stage ? ' · Stage '+plan.stage : ''} · ${plan.date} · ${plan.doctor}`;
+  document.getElementById('pps-h1').textContent = hi ? '📋 आपकी बीमारी और शिकायतें' : '📋 Your History & Complaints';
+  document.getElementById('pps-h2').textContent = hi ? '💊 आपकी उपचार योजना' : '💊 Your Treatment Plan';
+  document.getElementById('pps-h3').textContent = hi ? '💰 अनुमानित खर्च' : '💰 Estimated Costs';
+  document.getElementById('pps-h4').textContent = hi ? '🌿 खान-पान, व्यायाम और देखभाल' : '🌿 Diet, Exercise & Self-Care';
+  document.getElementById('pps-disc').textContent = hi
+    ? '⚠ खर्च अस्पताल, शहर और बीमा के अनुसार बदलता है। Ayushman Bharat PMJAY के बारे में पूछें।'
+    : '⚠ All costs are approximate and vary by hospital, city, and insurance. Ask about Ayushman Bharat PMJAY for coverage up to ₹5 lakh.';
+  document.getElementById('pps-history').textContent   = plan.history   || '—';
+  document.getElementById('pps-treatment').textContent = plan.treatment || '—';
+  document.getElementById('pps-costs').textContent     = plan.costs     || '—';
+  document.getElementById('pps-selfcare').textContent  = plan.selfcare  || '—';
+  document.getElementById('pps-warmth').textContent    = plan.warmth;
+  document.getElementById('qa-locked-view').style.display = 'none';
+  document.getElementById('qa-open-view').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LANGUAGE TOGGLE — re-calls /patient/simplify with new language
+// ═══════════════════════════════════════════════════════════════════════════════
+async function setLang(l) {
+  STATE.lang = l;
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-hi').classList.toggle('active', l === 'hi');
+  applyLang();
+
+  if (STATE.planReleased && STATE.approvedPlanText && STATE.simplifiedPlan) {
+    toast('⏳ Translating plan…');
+    try {
+      const p = getActivePatient();
+      const res = await fetch(`${API}/patient/simplify`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doctor_plan: STATE.approvedPlanText,
+          patient: { name: STATE.simplifiedPlan.patientName, cancer_type: STATE.simplifiedPlan.cancer },
+          language: l,
+          doctor_name: STATE.simplifiedPlan.doctor
+        })
+      });
+      const data = await res.json();
+      const plan = parsePlan(data.simplified_plan || '', p, STATE.simplifiedPlan.doctor);
+      STATE.simplifiedPlan = { ...plan, date: STATE.simplifiedPlan.date };
+      saveState();
+      showPatientPlan();
+      toast('✓ Plan translated');
+    } catch(e) {
+      // Show existing plan if translation fails
+      showPatientPlan();
+      toast('⚠ Translation failed — showing existing plan');
+    }
+  } else if (STATE.planReleased && STATE.simplifiedPlan) {
+    showPatientPlan();
+  }
+  saveState();
+}
+
+function applyLang() {
+  const hi = STATE.lang === 'hi';
+  document.getElementById('btn-en').classList.toggle('active', STATE.lang === 'en');
+  document.getElementById('btn-hi').classList.toggle('active', STATE.lang === 'hi');
+  const pw = document.getElementById('pw-title');
+  const ps = document.getElementById('pw-sub');
+  if (pw) pw.textContent = hi ? 'डॉक्टर आपकी योजना तैयार कर रहे हैं' : 'Your doctor is preparing your plan';
+  if (ps) ps.textContent = hi ? 'डॉक्टर के भेजने के बाद यहाँ दिखेगी।' : 'Your personalised treatment plan will appear here once your doctor sends it.';
+  const qa = document.getElementById('qa-title'); if(qa) qa.textContent = hi ? '💬 मुझसे पूछें' : '💬 Ask Me Anything';
+  const qlt = document.getElementById('qa-locked-title'); if(qlt) qlt.textContent = hi ? 'उपचार योजना का इंतज़ार' : 'Waiting for your treatment plan';
+  const qls = document.getElementById('qa-locked-sub'); if(qls) qls.textContent = hi ? 'डॉक्टर के भेजने के बाद Q&A खुलेगा।' : 'Questions unlock once your doctor sends your plan.';
+  const pi = document.getElementById('pat-inp'); if(pi) pi.placeholder = hi ? 'अपना सवाल यहाँ लिखें…' : 'Ask about your treatment…';
+  const pg = document.getElementById('pat-greeting'); if(pg) pg.textContent = hi ? 'नमस्ते! मैं आपके सवालों का जवाब देने के लिए यहाँ हूँ। अपनी बीमारी या इलाज के बारे में कुछ भी पूछें।' : "Hello! I'm here to help you understand your treatment. Ask me anything.";
+  const ps2 = document.getElementById('pat-sugs');
+  if (ps2) ps2.innerHTML = (hi
+    ? ['मेरी दवाई से बाल क्यों झड़ते हैं?', 'कीमोथेरेपी में क्या खाना चाहिए?', 'क्या मैं ठीक हो सकती हूँ?', 'साइड इफेक्ट से कैसे बचें?']
+    : ['Why is my hair falling out?', 'What foods help during chemo?', 'What does "partial response" mean?', 'How do I manage side effects?'])
+    .map(s => `<button class="sug" onclick="document.getElementById('pat-inp').value=this.textContent">${s}</button>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATIENT CHAT (/patient/query)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function sendPatMsg() {
+  const inp = document.getElementById('pat-inp');
+  const msg = inp.value.trim(); if (!msg) return;
+  inp.value = '';
+  addMsg('pat-msgs', 'user', 'You', msg);
+  const tid = addTyping('pat-msgs', 'Health Assistant');
+  const p = getActivePatient();
+  const cancer = p ? p.cancer : (STATE.simplifiedPlan?.cancer || 'Breast Cancer');
+  try {
+    const res = await fetch(`${API}/patient/query`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: msg, language: STATE.lang, cancer_type: cancer, chat_history: STATE.patChatHistory.slice(-4) })
+    });
+    const data = await res.json();
+    removeTyping(tid);
+
+    const parsed = typeof data.body === 'string'
+  ? JSON.parse(data.body)
+  : data;
+
+    const ans = parsed.answer || 'No response.';
+    addMsg('pat-msgs', 'ai', 'Health Assistant', ans);
+    STATE.patChatHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: ans });
+    saveState();
+  } catch {
+    removeTyping(tid);
+    addMsg('pat-msgs', 'ai', 'Health Assistant', STATE.lang === 'hi' ? 'सर्वर से जुड़ने में समस्या है।' : 'Could not reach server. Please try again.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOWNLOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+function downloadText() {
+  const plan = STATE.simplifiedPlan;
+  if (!plan) { toast('⚠ No plan to download'); return; }
+  const content = [
+    `TREATMENT PLAN — ${plan.patientName}`,
+    `${plan.cancer} · Stage ${plan.stage} · ${plan.date}`,
+    `Doctor: ${plan.doctor}`,
+    `${'─'.repeat(50)}`,
+    `\nHISTORY & COMPLAINTS\n${plan.history}`,
+    `\nTREATMENT PLAN\n${plan.treatment}`,
+    `\nESTIMATED COSTS\n${plan.costs}`,
+    `\nDIET, EXERCISE & SELF-CARE\n${plan.selfcare}`,
+    `\n${'─'.repeat(50)}\n${plan.warmth}`,
+    `\n\n⚠ All costs are approximate. Consult your doctor for any medical decisions.`
+  ].join('\n');
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `treatment-plan-${(plan.patientName || 'patient').replace(/\s+/g,'-')}.txt`;
+  a.click();
+  toast('✓ Downloaded as text file');
+}
+
+function downloadPDF() {
+  const plan = STATE.simplifiedPlan;
+  if (!plan) { toast('⚠ No plan to download'); return; }
+  const el = document.getElementById('print-area');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <h1>${plan.patientName}</h1>
+    <div class="pm">${plan.cancer} · Stage ${plan.stage} · ${plan.date} · Doctor: ${plan.doctor}</div>
+    <div class="ps"><div class="pst">History & Complaints</div><div class="psb">${plan.history}</div></div>
+    <div class="ps"><div class="pst">Treatment Plan</div><div class="psb">${plan.treatment}</div></div>
+    <div class="ps"><div class="pst">Estimated Costs</div><div class="psb">${plan.costs}</div><div class="disc">⚠ All costs are approximate and vary by hospital, city, and insurance.</div></div>
+    <div class="ps"><div class="pst">Diet, Exercise & Self-Care</div><div class="psb">${plan.selfcare}</div></div>
+    <div class="pw">${plan.warmth}</div>`;
+  window.print();
+  setTimeout(() => { el.style.display = 'none'; }, 1000);
+  toast('✓ Print dialog opened');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MARKDOWN RENDERER (doctor chat only)
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderMD(text) {
+  let h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/^### (.+)$/gm, '<div class="md-h3">$1</div>');
+  h = h.replace(/^## (.+)$/gm, '<div class="md-h3">$1</div>');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/^OPTION: (.+)$/gm, '<div class="md-option">$1</div>');
+  h = h.replace(/^[-•] (.+)$/gm, '<div class="md-bullet">$1</div>');
+  h = h.replace(/\n{2,}/g, '<div class="md-gap"></div>');
+  h = h.replace(/\n/g, '<br/>');
+  return h;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHAT HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function addMsg(cid, role, label, text, sources) {
+  const c = document.getElementById(cid);
+  const d = document.createElement('div'); d.className = `msg ${role}`;
+  const isDocAI = role === 'ai' && cid === 'doc-msgs';
+  const content = isDocAI ? renderMD(text) : (text+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let src = '';
+  if (sources && sources.length) {
+    const u = [...new Map(sources.map(s=>[s.source+s.page,s])).values()];
+    src = `<div class="src-pills">${u.slice(0,5).map(s=>`<span class="src-pill">📄 ${s.cancer_type||''} p.${s.page}</span>`).join('')}</div>`;
+  }
+  d.innerHTML = `<div class="msg-label">${label}</div><div class="bubble${isDocAI?' md-bubble':''}">${content}</div>${src}`;
+  c.appendChild(d); c.scrollTop = c.scrollHeight;
+}
+
+function addTyping(cid, label) {
+  const c = document.getElementById(cid);
+  const id = 'ty'+Date.now();
+  const d = document.createElement('div'); d.className = 'msg ai'; d.id = id;
+  d.innerHTML = `<div class="msg-label">${label}</div><div class="bubble"><span class="spinner"></span> Searching NCCN guidelines…</div>`;
+  c.appendChild(d); c.scrollTop = c.scrollHeight; return id;
+}
+
+function removeTyping(id) { const e = document.getElementById(id); if(e) e.remove(); }
+
+function toast(msg) {
+  const existing = document.querySelector('.toast'); if(existing) existing.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 400); }, 2800);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+loadState();
+applyLang();
+</script>
+</body>
+</html>
